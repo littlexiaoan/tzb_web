@@ -5,12 +5,11 @@
         <div class="container">
           <el-upload
               class="avatar-uploader"
-              action="https://jsonplaceholder.typicode.com/posts/"
-              :show-file-list="false"
-              :on-success="handleAvatarSuccess"
-              :on-change="getFile"
+              action=""
+              :before-upload="beforeUpload"
+              :on-change="OnChange"
           >
-            <img v-if="imageUrl" :src="imageUrl" class="avatar">
+            <img v-if="originalImageUrl" :src="originalImageUrl" class="avatar">
             <i v-else class="el-icon-plus avatar-uploader-icon">
               点击按钮上传图片
             </i>
@@ -18,117 +17,164 @@
         </div>
       </el-col>
       <el-col :span="12">
-        <div class="container">
-          <img v-if="imageUrl" :src="imageUrl" class="avatar">
+        <div class="container"
+             v-loading="loading"
+             element-loading-text="拼命加载中"
+             element-loading-spinner="el-icon-loading"
+             element-loading-background="rgba(255, 255, 255, 1)"
+        >
+          <img v-if="processedImageUrl" :src="processedImageUrl" class="avatar">
           <i v-else class="el-icon-picture-outline-round avatar-uploader-icon-return"></i>
         </div>
       </el-col>
     </el-row>
     <el-row>
-      <el-col :span="12">
+      <el-col :span="6" :offset="2">
         <div style="display: flex">
-          <el-button>按钮</el-button>
-          <el-button>按钮</el-button>
-          <el-button>按钮</el-button>
+          <el-button @click="click1">均值滤波</el-button>
+          <el-button @click="click2">中值滤波</el-button>
+          <el-button @click="click3">自适应中值滤波</el-button>
         </div>
       </el-col>
-      <el-col :span="12">
+      <el-col :span="6" offset="7">
         <div style="display: flex">
-          <el-button>按钮</el-button>
-          <el-button>按钮</el-button>
+          <el-button @click="click4">十字均值</el-button>
+          <el-button @click="click5">彩色图像复原</el-button>
         </div>
       </el-col>
     </el-row>
     <el-row>
-      <el-col :span="10" :offset="8">
+      <el-col :span="12" :offset="9" style="margin-top: 50px">
         <el-form :inline="true" class="demo-form-inline">
           <el-form-item label="PSNR值:">
-            <el-input v-model="input"></el-input>
+            <el-input v-model="psnr"></el-input>
           </el-form-item>
         </el-form>
       </el-col>
     </el-row>
-    <!--    <el-upload
-            class="avatar-uploader"
-            action="https://jsonplaceholder.typicode.com/posts/"
-            :show-file-list="false"
-            :on-success="handleAvatarSuccess"
-            :before-upload="beforeAvatarUpload"
-            :on-change="getFile"
-        >
-          <img v-if="imageUrl" :src="imageUrl" class="avatar">
-          <i v-else class="el-icon-plus avatar-uploader-icon"></i>
-        </el-upload>
-        <hr>
-        <hr>
-        <div style="width:178px ;height: 178px; background-color: skyblue">
-          <img :src="imageUrl">
-        </div>
-        <hr>
-        <hr>
-        <div style="width:178px ;height: 178px; background-color: skyblue">
-          <img :src="imageUrl">
-        </div>
-        <hr>
-        <hr>
-        <div style="width:178px ;height: 178px; background-color: skyblue">
-          <img :src="imageUrl">
-        </div>-->
   </div>
 </template>
 
 <script>
+import photoShop from "@/utils/photoShop";
+import message from "@/utils/message";
+import {removeNoise} from "@/api";
+
 export default {
   name: "Second",
   data() {
     return {
-      imageUrl: '',
+      //原图片地址
+      originalImageUrl: '',
+      //图片base64码
       imgCode: '',
-      input: ""
+      //处理后图片的地址
+      processedImageUrl: "",
+      //PSNR值
+      psnr: "",
+      loading: false
     };
   },
   methods: {
-    handleAvatarSuccess(res, file) {
-      console.log("@imageUrl", this.imageUrl)
-      console.log("@@@", res, file)
-      this.imageUrl = URL.createObjectURL(file.raw);
-      console.log("@@imageUrl", this.imageUrl)
+    //获取原图的地址、base64
+    beforeUpload(file) {
+      this.originalImageUrl = photoShop.getImageUrl(file)
+      //转base64码
+      photoShop.getBase64(file).then(imgCode => {
+        //res就是base64码 赋值给imgCode
+        this.imgCode = imgCode
+      })
+      return false
     },
-    beforeAvatarUpload(file) {
-      const isJPG = file.type === 'image/jpeg';
-      const isLt2M = file.size / 1024 / 1024 < 2;
-
-      if (!isJPG) {
-        this.$message.error('上传头像图片只能是 JPG 格式!');
-      }
-      if (!isLt2M) {
-        this.$message.error('上传头像图片大小不能超过 2MB!');
-      }
-      return isJPG && isLt2M;
+    //图片改变，将更新图片URL置空
+    OnChange() {
+      this.processedImageUrl = ""
     },
-    //转base64方法
-    getBase64(file) {
-      return new Promise(function (resolve, reject) {
-        let reader = new FileReader();
-        let imgResult = "";
-        reader.readAsDataURL(file);
-        reader.onload = function () {
-          imgResult = reader.result;
-        };
-        reader.onerror = function (error) {
-          reject(error);
-        };
-        reader.onloadend = function () {
-          resolve(imgResult);
-        };
-      });
+    //均值滤波
+    click1() {
+      this.processedImageUrl = ""
+      this.psnr = ""
+      this.loading = true
+      removeNoise({op: "", img_base64: this.imgCode}).then(res => {
+            //成功回调
+            this.processedImageUrl = res.results.img_base64
+            this.psnr = res.results.psnr
+            this.loading = false
+          },
+          error => {
+            //失败回调
+            message.warning(error.message)
+            this.loading = false
+          })
     },
-    //将图片转为base64
-    getFile(file) {
-      this.getBase64(file.raw).then(res => {
-        this.imgCode = res
-      });
-    }
+    //中值滤波
+    click2() {
+      this.processedImageUrl = ""
+      this.psnr = ""
+      this.loading = true
+      removeNoise({op: "", img_base64: this.imgCode}).then(res => {
+            //成功回调
+            this.processedImageUrl = res.results.img_base64
+            this.psnr = res.results.psnr
+            this.loading = false
+          },
+          error => {
+            //失败回调
+            message.warning(error.message)
+            this.loading = false
+          })
+    },
+    //自适应中值滤波
+    click3() {
+      this.processedImageUrl = ""
+      this.psnr = ""
+      this.loading = true
+      removeNoise({op: "", img_base64: this.imgCode}).then(res => {
+            //成功回调
+            this.processedImageUrl = res.results.img_base64
+            this.psnr = res.results.psnr
+            this.loading = false
+          },
+          error => {
+            //失败回调
+            message.warning(error.message)
+            this.loading = false
+          })
+    },
+    //十字均值
+    click4() {
+      this.processedImageUrl = ""
+      this.psnr = ""
+      this.loading = true
+      removeNoise({op: "", img_base64: this.imgCode}).then(res => {
+            //成功回调
+            this.processedImageUrl = res.results.img_base64
+            this.psnr = res.results.psnr
+            this.loading = false
+          },
+          error => {
+            //失败回调
+            message.warning(error.message)
+            this.loading = false
+          })
+    },
+    //彩色图像复原
+    click5() {
+      this.processedImageUrl = ""
+      this.psnr = ""
+      this.loading = true
+      removeNoise({op: "", img_base64: this.imgCode}).then(res => {
+            //成功回调
+            this.processedImageUrl = res.results.img_base64
+            this.psnr = res.results.psnr
+            this.loading = false
+          },
+          error => {
+            //失败回调
+            message.warning(error.message)
+            this.loading = false
+          })
+    },
   }
 }
 </script>
@@ -177,33 +223,4 @@ export default {
 
 }
 
-/*.avatar-uploader .el-upload {
-  border: 1px dashed #d9d9d9;
-  border-radius: 6px;
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-}
-
-.avatar-uploader .el-upload:hover {
-  border-color: #409EFF;
-}
-
-.avatar-uploader-icon {
-  font-size: 28px;
-  color: #8c939d;
-  width: 178px;
-  height: 178px;
-  line-height: 178px;
-  text-align: center;
-}
-
-!*上传成功的图片尺寸*!
-.avatar {
-  background: skyblue;
-  width: 178px;
-  height: 178px;
-  display: block;
-
-}*/
 </style>

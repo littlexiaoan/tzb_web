@@ -1,24 +1,12 @@
-# tzb_test
+# tzb_project
 
-## Project setup
-```
-npm install
-```
+### utils
 
-### Compiles and hot-reloads for development
-```
-npm run serve
-```
+#### message.js
 
-### Compiles and minifies for production
-```
-npm run build
-```
+对element-ui的Notification进行二次封装
 
-### Lints and fixes files
-```
-npm run lint
-```
+#### photoShop.js
 
-### Customize configuration
-See [Configuration Reference](https://cli.vuejs.org/config/).
+封装函数 获取图片URL及base64编码
+

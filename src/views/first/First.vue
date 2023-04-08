@@ -5,12 +5,11 @@
         <div class="container">
           <el-upload
               class="avatar-uploader"
-              action="https://jsonplaceholder.typicode.com/posts/"
-              :show-file-list="false"
-              :on-success="handleAvatarSuccess"
-              :on-change="getFile"
+              action=""
+              :before-upload="beforeUpload"
+              :on-change="OnChange"
           >
-            <img v-if="imageUrl" :src="imageUrl" class="avatar">
+            <img v-if="originalImageUrl" :src="originalImageUrl" class="avatar">
             <i v-else class="el-icon-plus avatar-uploader-icon">
               点击按钮上传图片
             </i>
@@ -18,29 +17,35 @@
         </div>
       </el-col>
       <el-col :span="12">
-        <div class="container">
-          <img v-if="imageUrl" :src="imageUrl" class="avatar">
+        <div class="container"
+             v-loading="loading"
+             element-loading-text="拼命加载中"
+             element-loading-spinner="el-icon-loading"
+             element-loading-background="rgba(255, 255, 255, 1)"
+        >
+          <img v-if="processedImageUrl" :src="processedImageUrl" class="avatar">
           <i v-else class="el-icon-picture-outline-round avatar-uploader-icon-return"></i>
         </div>
       </el-col>
     </el-row>
     <el-row>
-      <el-col :span="6" :offset="8">
-        <div style="display: flex">
-          <el-input v-model="input" placeholder="请输入内容"></el-input>
-          <el-button @click="test">按钮</el-button>
+      <el-col :span="8" :offset="7">
+        <div class="input-button">
+          <el-input v-model.number="size1" placeholder="请输入椒盐噪声的强度"></el-input>
+          <el-button type="primary" @click="click1">椒盐加噪</el-button>
         </div>
-        <div style="display: flex">
-          <el-input v-model="input" placeholder="请输入内容"></el-input>
-          <el-button @click="test">按钮</el-button>
+        <div class="input-button">
+          <el-input v-model.number="size2" placeholder="请输入高斯噪声的强度"></el-input>
+          <el-button type="primary" @click="click2">高斯加噪</el-button>
         </div>
-        <div style="display: flex">
-          <el-input v-model="input" placeholder="请输入内容"></el-input>
-          <el-button @click="test">按钮</el-button>
+        <div class="input-button">
+          <el-input v-model.number="size3" placeholder="请输入泊松噪声的强度"></el-input>
+          <el-button type="primary" @click="click3">泊松加噪</el-button>
         </div>
-        <div style="display: flex">
-          <el-input v-model="input" placeholder="请输入内容"></el-input>
-          <el-button @click="test">按钮</el-button>
+        <div class="input-button">
+          <el-input v-model.number="size4" placeholder="请输入运动模糊的强度"></el-input>
+          <el-input v-model.number="direction" placeholder="请输入运动模糊的方向"></el-input>
+          <el-button type="primary" @click="click4">运动模糊</el-button>
         </div>
       </el-col>
     </el-row>
@@ -48,52 +53,116 @@
 </template>
 
 <script>
+import photoShop from "@/utils/photoShop";
+import {addNoise, api1_1, api1_2, api1_3, api1_4} from "@/api";
+import message from "@/utils/message";
+
+
 export default {
   name: "First",
   data() {
     return {
-      imageUrl: '',
+      //原图片地址
+      originalImageUrl: '',
+      //图片base64码
       imgCode: '',
-      input: ''
+      //参数
+      size1: "",
+      size2: "",
+      size3: "",
+      size4: "",
+      direction: "",
+      //处理后图片的地址
+      processedImageUrl: "",
+      //等待
+      loading: false
     };
   },
   methods: {
-    test() {
-      console.log(this.input)
+    //获取原图的地址、base64
+    beforeUpload(file) {
+      this.originalImageUrl = photoShop.getImageUrl(file)
+      //转base64码
+      photoShop.getBase64(file).then(imgCode => {
+        //res就是base64码 赋值给imgCode
+        this.imgCode = imgCode
+      })
+      return false
     },
-    handleAvatarSuccess(res, file) {
-      this.imageUrl = URL.createObjectURL(file.raw);
+    //图片改变，将更新图片URL置空
+    OnChange() {
+      this.processedImageUrl = ""
     },
-    //转base64方法
-    getBase64(file) {
-      return new Promise(function (resolve, reject) {
-        let reader = new FileReader();
-        let imgResult = "";
-        reader.readAsDataURL(file);
-        reader.onload = function () {
-          imgResult = reader.result;
-        };
-        reader.onerror = function (error) {
-          reject(error);
-        };
-        reader.onloadend = function () {
-          resolve(imgResult);
-        };
-      });
+    //椒盐噪声
+    click1() {
+      this.processedImageUrl = ""
+      this.loading = true
+      addNoise({op: "salt", size: this.size1, img_base64: this.imgCode}).then(res => {
+            //成功回调
+            this.processedImageUrl = res.results.img_base64
+            this.loading = false
+          },
+          error => {
+            //失败回调
+            message.warning(error.message)
+            this.loading = false
+          })
     },
-    //将图片转为base64
-    getFile(file) {
-      this.getBase64(file.raw).then(res => {
-        this.imgCode = res
-      });
+    //高斯噪声
+    click2() {
+      this.processedImageUrl = ""
+      this.loading = true
+      addNoise({op: "gaussian", size: this.size2, img_base64: this.imgCode}).then(res => {
+            //成功回调
+            this.processedImageUrl = res.results.img_base64
+            this.loading = false
+          },
+          error => {
+            //失败回调
+            message.warning(error.message)
+            this.loading = false
+          })
     },
-
+    //泊松噪声
+    click3() {
+      this.processedImageUrl = ""
+      this.loading = true
+      addNoise({op: "poisson", size: this.size3, img_base64: this.imgCode}).then(res => {
+            //成功回调
+            this.processedImageUrl = res.results.img_base64
+            this.loading = false
+          },
+          error => {
+            //失败回调
+            message.warning(error.message)
+            this.loading = false
+          })
+    },
+    //运动模糊
+    click4() {
+      this.processedImageUrl = ""
+      this.loading = true
+      addNoise({op: "motion", size: this.size4, direction: this.direction, img_base64: this.imgCode}).then(res => {
+            //成功回调
+            this.processedImageUrl = res.results.img_base64
+            this.loading = false
+          },
+          error => {
+            //失败回调
+            message.warning(error.message)
+            this.loading = false
+          })
+    },
   }
-
 }
 </script>
 
 <style lang="less" scoped>
+.input-button {
+  display: flex;
+  padding: 5px;
+}
+
 .container {
   width: 512px;
   height: 512px;
