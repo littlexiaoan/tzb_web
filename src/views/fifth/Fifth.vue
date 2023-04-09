@@ -55,7 +55,7 @@
 <script>
 import photoShop from "@/utils/photoShop";
 import message from "@/utils/message";
-import {api3} from "@/api";
+import {api5} from "@/api";
 
 export default {
   name: "Fifth",
@@ -89,7 +89,7 @@ export default {
     uploadFile(imgCode) {
       // 发送 base64 编码到后端
       this.loading = true
-      api3(imgCode).then(
+      api5(imgCode).then(
           res => {
             this.processedImageUrlOne = res.results.img_base64_1
             this.processedImageUrlTwo = res.results.img_base64_3

@@ -15,3 +15,25 @@ export function removeNoise(params){
         data:params  //接口参数
     });
 }
+
+export function api3(params){
+    console.log("params:", params)
+    return request({
+        url: "/remove_noise",  //接口路径
+        data:params  //接口参数
+    });
+}
+export function api4(params){
+    console.log("params:", params)
+    return request({
+        url: "/remove_noise",  //接口路径
+        data:params  //接口参数
+    });
+}export function api5(params){
+    console.log("params:", params)
+    return request({
+        url: "/remove_noise",  //接口路径
+        data:params  //接口参数
+    });
+}
+
